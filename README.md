@@ -80,6 +80,16 @@ node keylox_office_bridge.mjs [opsi]
   --quiet           gak cetak log tiap poll
 ```
 
+## Deteksi kolaborasi & konflik (mode LIVE)
+
+Kalau 2+ sesi OpenCode lagi kerja bareng:
+
+- **Kolaborasi** (sesi di proyek/worktree yang sama) -> karakter menampilkan gelembung diskusi tiap ~12 detik
+- **Konflik** (2+ sesi edit file yang **sama**) -> karakter menampilkan gelembung konflik! + partikel merah tiap ~8 detik
+
+HUD chip juga nampilin jumlah: `live · 8 sesi · 2 kerja · konflik 1 · diskusi 2`
+
+Deteksinya otomatis dari `data.agent` + `filePath` di tool call. Gak perlu konfigurasi tambahan.
 ## Kustomisasi (buat ganti jadi punya lu)
 
 Semua bisa diubah tanpa install dependency. Edit file, save, refresh browser.

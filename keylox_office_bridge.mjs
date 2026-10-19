@@ -184,6 +184,17 @@ function summarize(messageRow, now, session) {
     }
   }
 
+  // file terakhir yang diedit (buat deteksi konflik antar sesi)
+  let currentFile = null;
+  for (let i = content.length - 1; i >= 0; i--) {
+    const c = content[i];
+    if (c && c.type === 'tool') {
+      const inp = c.state && c.state.input;
+      const fp = inp && (inp.filePath || inp.path || inp.file);
+      if (fp) { currentFile = String(fp); break; }
+    }
+  }
+
   let task = null, kind = 'diem';
   if (runningTool) {
     task = describeTool(runningTool.name, runningTool.state && runningTool.state.input);
@@ -211,6 +222,7 @@ function summarize(messageRow, now, session) {
     model: data.model && data.model.id ? data.model.id : null,
     tokens: data.tokens || null,
     cost: typeof data.cost === 'number' ? data.cost : null,
+    currentFile,
     lastTool: last && last.type === 'tool' ? last.name : null,
     lastToolStatus: last && last.type === 'tool' && last.state ? last.state.status : null
   };
@@ -220,7 +232,7 @@ function summarize(messageRow, now, session) {
 /* State builder                                                       */
 /* ------------------------------------------------------------------ */
 const memo = new Map(); // session_id -> riwayat buat smoothing + counter
-const stats = { stepsCompleted: 0, startedAt: Date.now() };
+const stats = { stepsCompleted: 0, startedAt: Date.now(), collab: 0, conflicts: 0 };
 
 function buildState() {
   const now = Date.now();
@@ -235,6 +247,8 @@ function buildState() {
   const working = sessions.filter((s) => s.state === 'working').length;
   const resting = sessions.filter((s) => s.state === 'resting').length;
   const away = sessions.filter((s) => s.state === 'away').length;
+  const collab = sessions.filter((s) => s.collab).length;
+  const conflict = sessions.filter((s) => s.conflict).length;
 
   return {
     now,
@@ -242,7 +256,7 @@ function buildState() {
     db: dbPath,
     pollMs: POLL_MS,
     thresholds: { restAfterMs: REST_AFTER_MS, awayAfterMs: AWAY_AFTER_MS },
-    stats: { ...stats, sessions: sessions.length, working, resting, away },
+    stats: { ...stats, sessions: sessions.length, working, resting, away, collab, conflict },
     sessions
   };
 }
@@ -291,9 +305,46 @@ function readReal(now) {
       idleAt: s.time_idle || null,
       parent: s.parent_id || null,
       cost: m.cost,
-      tokens: m.tokens
+      tokens: m.tokens,
+      currentFile: m.currentFile || null
     });
   }
+
+  // deteksi kolaborasi & konflik antar sesi yang lagi kerja
+  const working = out.filter((s) => s.state === 'working');
+  const byProject = {};
+  working.forEach((s) => {
+    if (!byProject[s.project]) byProject[s.project] = [];
+    byProject[s.project].push(s);
+  });
+  const byFile = {};
+  working.forEach((s) => {
+    if (s.currentFile) {
+      if (!byFile[s.currentFile]) byFile[s.currentFile] = [];
+      byFile[s.currentFile].push(s);
+    }
+  });
+  let collabCount = 0, conflictCount = 0;
+  working.forEach((s) => {
+    const peers = (byProject[s.project] || []).filter((p) => p.id !== s.id);
+    s.collab = peers.length >= 1;
+    s.collabWith = peers.map((p) => p.id);
+    if (s.collab) collabCount++;
+    if (s.currentFile && (byFile[s.currentFile] || []).length >= 2) {
+      s.conflict = true;
+      s.conflictWith = (byFile[s.currentFile] || []).filter((p) => p.id !== s.id).map((p) => p.id);
+      conflictCount++;
+    } else {
+      s.conflict = false;
+      s.conflictWith = [];
+    }
+  });
+  // sesi yang gak kerja gak punya collab/conflict
+  out.forEach((s) => {
+    if (s.state !== 'working') { s.collab = false; s.collabWith = []; s.conflict = false; s.conflictWith = []; }
+  });
+  stats.collab = collabCount;
+  stats.conflicts = conflictCount;
   return out;
 }
 
@@ -339,7 +390,12 @@ function fakeSessions(now) {
       kind: working ? 'tool' : 'diem',
       quietMs: Math.round(quietMs),
       updatedAt: now - quietMs,
-      cost: 0.01 * i, tokens: null, parent: null
+      cost: 0.01 * i, tokens: null, parent: null,
+      currentFile: working ? (tool[1].filePath || null) : null,
+      collab: working && i < 2,
+      collabWith: working && i < 2 ? [FAKE_DEFS[i === 0 ? 1 : 0].id] : [],
+      conflict: working && i === 0,
+      conflictWith: working && i === 0 ? [FAKE_DEFS[1].id] : []
     };
   });
 }
@@ -359,7 +415,7 @@ function refresh() {
   try {
     current = buildState();
   } catch (err) {
-    current = { now: Date.now(), source: FAKE ? 'fake' : 'live', error: String(err && err.message || err), sessions: [], stats: { sessions: 0, working: 0, resting: 0, away: 0, stepsCompleted: stats.stepsCompleted } };
+    current = { now: Date.now(), source: FAKE ? 'fake' : 'live', error: String(err && err.message || err), sessions: [], stats: { sessions: 0, working: 0, resting: 0, away: 0, collab: 0, conflict: 0, stepsCompleted: stats.stepsCompleted } };
   }
   const json = JSON.stringify(current);
   if (json !== lastJson) {

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Keylox Office — AI Agent Sim (prototype)</title>
+<title>Keylox Office â€” AI Agent Sim (prototype)</title>
 <style>
   :root{
     --bg-app:#1a1a1a; --bg-panel:#222; --bg-elev:#2a2a2a;
@@ -100,8 +100,8 @@
 <div class="app">
   <header class="topbar">
     <div class="brand">
-      <span class="logo">▣</span>
-      <div><h1>KEYLOX OFFICE</h1><div class="sub">AI agent sim — prototype pixel kantor</div></div>
+      <span class="logo">â–£</span>
+      <div><h1>KEYLOX OFFICE</h1><div class="sub">AI agent sim â€” prototype pixel kantor</div></div>
     </div>
     <div class="hud">
       <div class="chip" id="hud-clock">09:00</div>
@@ -113,10 +113,10 @@
     </div>
     <div class="ctrls">
       <div class="mode-seg">
-        <button id="mode-live" title="Karakter ikut aktivitas OpenCode beneran">● LIVE</button>
+        <button id="mode-live" title="Karakter ikut aktivitas OpenCode beneran">â— LIVE</button>
         <button id="mode-demo" class="active" title="Simulasi demo (jalan sendiri)">DEMO</button>
       </div>
-      <button id="btn-pause">⏸ Pause</button>
+      <button id="btn-pause">â¸ Pause</button>
       <button data-speed="1" class="active">1x</button>
       <button data-speed="2">2x</button>
       <button data-speed="4">4x</button>
@@ -128,8 +128,8 @@
     <section class="stage">
       <canvas id="scene"></canvas>
       <div class="legend">
-        <b>Klik karakter</b> buat pilih · <b>klik lantai</b> buat nyuruh dia jalan ke situ ·
-        <b>Space</b> pause · <b>1-6</b> pilih agent · <b>W</b> semua kerja · <b>R</b> semua istirahat
+        <b>Klik karakter</b> buat pilih Â· <b>klik lantai</b> buat nyuruh dia jalan ke situ Â·
+        <b>Space</b> pause Â· <b>1-6</b> pilih agent Â· <b>W</b> semua kerja Â· <b>R</b> semua istirahat
       </div>
     </section>
 
@@ -170,7 +170,7 @@
           <button id="cmd-run">Kirim</button>
         </div>
         <div class="hint" id="cmd-hint">
-          Contoh: <b>reno kerja</b> · <b>maya istirahat</b> · <b>beat jalan</b> · <b>semua kerja</b> · <b>semua istirahat</b>
+          Contoh: <b>reno kerja</b> Â· <b>maya istirahat</b> Â· <b>beat jalan</b> Â· <b>semua kerja</b> Â· <b>semua istirahat</b>
         </div>
       </div>
     </aside>
@@ -267,7 +267,7 @@
   addF('plant', 31, 8, 1, 1);
   addF('vending', 31, 20, 1, 1);
 
-  // lounge (kanan bawah) — semua furniture di sini walkable biar bisa didatangi
+  // lounge (kanan bawah) â€” semua furniture di sini walkable biar bisa didatangi
   const sofa = addF('sofa', 25, 16, 3, 1, { blocked: false, sortY: 17 * TILE - 8 });
   for (let i = 0; i < 3; i++) {
     const s = { id: ++seatSeq, x: 25 + i, y: 16, kind: 'rest', restKind: 'couch', by: null };
@@ -447,7 +447,7 @@
   }
   function sendToDesk(a, task) {
     const t = tileOf(a);
-    // udah nongkrong di meja → cukup ganti/urus task-nya
+    // udah nongkrong di meja â†’ cukup ganti/urus task-nya
     if (a.state === 'work' && a.seat) {
       if (task) { a.task = task; a.progress = 0; a.taskDur = rnd(7, 15); bubble(a, 'Task baru: ' + task, 2.6); }
       else bubble(a, 'Udah kerja woy');
@@ -666,7 +666,7 @@
     // plakat
     ctx.font = 'bold 9px ui-monospace,Consolas,monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#8a8a99'; ctx.fillText('KEYLOX  •  AI OFFICE', W / 2, TILE / 2 + 1);
+    ctx.fillStyle = '#8a8a99'; ctx.fillText('KEYLOX  â€¢  AI OFFICE', W / 2, TILE / 2 + 1);
   }
 
   function drawDesk(f, x, y, w) {
@@ -1027,7 +1027,7 @@
           '<div class="who"><div class="nm">' + a.name + '</div><div class="rl">' + a.role + '</div></div>' +
           '<span class="badge" data-badge>nganggur</span>' +
         '</div>' +
-        '<div class="task"><span class="tname" data-task>—</span><div class="bar"><i data-bar></i></div></div>' +
+        '<div class="task"><span class="tname" data-task>â€”</span><div class="bar"><i data-bar></i></div></div>' +
         '<div class="acts">' +
           '<button data-act="work">Kerja</button>' +
           '<button data-act="rest">Istirahat</button>' +
@@ -1085,19 +1085,19 @@
 
       let taskTxt;
       if (isLive) {
-        if (a.state === 'work') taskTxt = '⚡ ' + (a.liveTask || 'kerja…');
+        if (a.state === 'work') taskTxt = '⚡ ' + (a.liveTask || 'kerja…') + (a.liveSess && a.liveSess.conflict ? '  ⚠️' : (a.liveSess && a.liveSess.collab ? '  💬' : ''));
         else if (a.state === 'away') taskTxt = 'gak ada sesi aktif';
-        else if (a.liveSess && a.liveSess.lastTask) taskTxt = '✓ ' + a.liveSess.lastTask;
+        else if (a.liveSess && a.liveSess.lastTask) taskTxt = 'âœ“ ' + a.liveSess.lastTask;
         else taskTxt = 'nganggur';
       } else {
-        taskTxt = a.task ? '🔧 ' + a.task : (a.pendingTask ? '⏳ ' + a.pendingTask : (a.tasksDone + ' task selesai'));
+        taskTxt = a.task ? 'ðŸ”§ ' + a.task : (a.pendingTask ? 'â³ ' + a.pendingTask : (a.tasksDone + ' task selesai'));
       }
       card.querySelector('[data-task]').textContent = taskTxt;
       card.querySelector('[data-bar]').style.width = Math.round((a.hidden ? 0 : a.progress) * 100) + '%';
     }
     const hh = String(Math.floor(clockMin / 60) % 24).padStart(2, '0');
     const mm = String(Math.floor(clockMin % 60)).padStart(2, '0');
-    hud.clock.innerHTML = '<b>' + hh + ':' + mm + '</b> · hari ' + day;
+    hud.clock.innerHTML = '<b>' + hh + ':' + mm + '</b> Â· hari ' + day;
     hud.work.innerHTML = '<b>' + working + '</b> kerja';
     hud.rest.innerHTML = '<b>' + resting + '</b> istirahat';
     if (isLive) {
@@ -1115,7 +1115,7 @@
   function togglePause() {
     paused = !paused;
     const b = document.getElementById('btn-pause');
-    b.textContent = paused ? '▶ Lanjut' : '⏸ Pause';
+    b.textContent = paused ? 'â–¶ Lanjut' : 'â¸ Pause';
     b.classList.toggle('active', paused);
   }
   document.getElementById('btn-pause').addEventListener('click', togglePause);
@@ -1223,7 +1223,7 @@
   });
 
   /* ==================================================================
-     14. LIVE MODE — karakter ikut aktivitas OpenCode beneran
+     14. LIVE MODE â€” karakter ikut aktivitas OpenCode beneran
      ================================================================== */
   const BRIDGE_BASE = (location.protocol === 'http:' || location.protocol === 'https:')
     ? location.origin
@@ -1278,6 +1278,21 @@
           a.liveTask = s.task; a.task = s.task; a.workTime = 0;
           bubble(a, s.task, 2.2);
         }
+        // konflik: 2+ sesi edit file yang sama
+        if (s.conflict) {
+          if (!a.conflictT || tGlobal - a.conflictT > 8) {
+            a.conflictT = tGlobal;
+            bubble(a, 'âš ï¸ konflik!', 2.4);
+            spawnParticle({ x: a.px, y: a.py - 26, text: '!', color: '#ef4444', vy: -18, life: 1.2 });
+            spawnParticle({ x: a.px + rnd(-8, 8), y: a.py - 18, kind: 'pixel', color: '#ef4444', life: 0.6, vx: rnd(-12, 12), vy: rnd(-20, -8), size: 2 });
+          }
+        } else if (s.collab) {
+          // kolaborasi: sesi lain lagi kerja di proyek yang sama
+          if (!a.collabT || tGlobal - a.collabT > 12) {
+            a.collabT = tGlobal;
+            bubble(a, 'ðŸ’¬ diskusi', 2.0);
+          }
+        }
         return;
       }
       if (a.state === 'walk' && a.goal === 'desk') {
@@ -1286,7 +1301,7 @@
       }
       if (tGlobal - a.askT < 2.5) return;   // jangan spam kalau meja penuh
       a.askT = tGlobal;
-      a.liveTask = s.task || 'kerja…';
+      a.liveTask = s.task || 'kerjaâ€¦';
       a.workTime = 0;
       sendToDesk(a, a.liveTask);
     } else if (st === 'resting') {
@@ -1294,7 +1309,7 @@
       if (a.state === 'walk' && a.goal === 'rest') return;
       if (tGlobal - a.askT < 4) return;
       a.askT = tGlobal;
-      if (a.state === 'work' && a.liveTask) bubble(a, '✓ ' + a.liveTask, 2.2);
+      if (a.state === 'work' && a.liveTask) bubble(a, 'âœ“ ' + a.liveTask, 2.2);
       sendToRest(a);
     } else if (st === 'away') {
       if (a.hidden || a.state === 'away') return;
@@ -1331,7 +1346,7 @@
       driveLive(a, s);
     });
 
-    // karakter yang gak dapet sesi → istirahat aja
+    // karakter yang gak dapet sesi â†’ istirahat aja
     agents.forEach(function (a) {
       if (a.sid) return;
       a.liveSess = null; a.liveTask = null;
@@ -1348,14 +1363,15 @@
     list.forEach(function (s) {
       const cls = s.state === 'working' ? 'work' : s.state === 'away' ? 'away' : 'rest';
       const label = s.state === 'working' ? 'kerja' : s.state === 'away' ? 'pulang' : 'istirahat';
-      const task = s.state === 'working' ? (s.task || 'kerja…')
+      const task = s.state === 'working' ? (s.task || 'kerjaâ€¦')
         : (s.lastTask ? 'terakhir: ' + s.lastTask : 'nganggur');
-      const sub = (s.project || 'OpenCode') + ' · ' + (s.title || '') +
-        (s.state === 'working' ? '' : ' · diem ' + fmtAgo(s.quietMs));
+      const sub = (s.project || 'OpenCode') + ' Â· ' + (s.title || '') +
+        (s.state === 'working' ? '' : ' Â· diem ' + fmtAgo(s.quietMs));
+      const tag = s.state === 'working' ? (s.conflict ? '⚠️ konflik' : (s.collab ? '💬 diskusi' : '')) : '';
       html += '<div class="live-row ' + cls + '">' +
         '<div class="lr-top"><span class="lr-name">' + esc(s.name) + '</span>' +
         '<span class="lr-state">' + label + '</span></div>' +
-        '<div class="lr-task">' + esc(task) + '</div>' +
+        '<div class="lr-task">' + esc(task) + (tag ? '  ' + tag : '') + '</div>' +
         '<div class="lr-sub">' + esc(sub) + '</div></div>';
     });
     if (!list.length) html = '<div class="hint" style="margin:0">Belum ada sesi aktif.</div>';
@@ -1366,12 +1382,18 @@
     const el = hud.live;
     if (!el) return;
     if (live.mode !== 'live') { el.className = 'chip'; el.textContent = 'demo'; return; }
-    if (live.error) { el.className = 'chip live-err'; el.textContent = '● live: putus'; return; }
+    if (live.error) { el.className = 'chip live-err'; el.textContent = 'â— live: putus'; return; }
     const d = live.data || {};
     const list = d.sessions || [];
     const w = list.filter(function (s) { return s.state === 'working'; }).length;
     el.className = 'chip live-on';
-    el.textContent = '● live · ' + list.length + ' sesi · ' + w + ' kerja';
+    const cc = list.filter(function (s) { return s.conflict; }).length;
+    const dc = list.filter(function (s) { return s.collab; }).length;
+    let extra = '';
+    if (cc) extra += ' · ⚠️' + cc;
+    if (dc) extra += ' · 💬' + dc;
+    el.textContent = '● live · ' + list.length + ' sesi · ' + w + ' kerja' + extra;
+    el.textContent = '\u25CF live \u00B7 ' + list.length + ' sesi \u00B7 ' + w + ' kerja' + extra;
   }
 
   function pollLive() {
@@ -1426,7 +1448,7 @@
   syncUI();
   bootMode();
 
-  // Hook debug — bisa dicolek dari DevTools console:
+  // Hook debug â€” bisa dicolek dari DevTools console:
   // KeyloxOffice.agents[0].state, KeyloxOffice.sendToDesk(KeyloxOffice.agents[0])
   window.KeyloxOffice = {
     agents: agents, seats: seats, workSeats: workSeats, restSeats: restSeats, furniture: furniture,
