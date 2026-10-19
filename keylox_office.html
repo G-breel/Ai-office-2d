@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Keylox Office — AI Agent Sim (prototype)</title>
+<style>
+  :root{
+    --bg-app:#1a1a1a; --bg-panel:#222; --bg-elev:#2a2a2a;
+    --border:#333; --border-strong:#444;
+    --text:#f0f0f0; --muted:#888;
+    --accent:#ff6600; --ok:#4ade80; --warn:#f59e0b; --bad:#ef4444; --info:#38bdf8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg-app);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:13px;overflow:hidden}
+  .app{display:flex;flex-direction:column;height:100%}
+
+  header.topbar{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg-panel);flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,#ff6600,#ff9a3c);display:grid;place-items:center;font-size:14px;color:#1a1a1a;font-weight:700}
+  h1{font-size:13px;letter-spacing:.12em}
+  .sub{font-size:11px;color:var(--muted)}
+  .hud{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:var(--bg-elev);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .chip b{color:var(--text)}
+  .ctrls{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  button{background:var(--bg-elev);color:var(--text);border:1px solid var(--border-strong);border-radius:6px;padding:5px 9px;font-size:11px;font-family:inherit;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+  button:hover{background:#333;border-color:#555}
+  button.active{background:rgba(255,102,0,.16);border-color:var(--accent);color:#ffb27a}
+  button:disabled{opacity:.4;cursor:not-allowed}
+
+  main{display:flex;flex:1;min-height:0}
+  .stage{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;overflow:auto;
+         background-image:radial-gradient(circle at 50% 0%,#23232b,#18181f 70%)}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;border:1px solid var(--border);border-radius:4px;box-shadow:0 10px 30px rgba(0,0,0,.45);background:#18181f;cursor:crosshair;display:block}
+  .legend{font-size:11px;color:var(--muted);text-align:center;max-width:640px;line-height:1.6}
+  .legend b{color:#bbb}
+
+  aside.side{width:330px;flex:none;border-left:1px solid var(--border);background:var(--bg-panel);display:flex;flex-direction:column;overflow:auto}
+  .side-block{padding:10px;border-bottom:1px solid var(--border)}
+  .side-block h2{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+  .cards{display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow:auto;padding-right:2px}
+  .card{background:var(--bg-elev);border:1px solid var(--border);border-radius:8px;padding:8px;cursor:pointer;transition:border-color .12s}
+  .card:hover{border-color:var(--border-strong)}
+  .card.selected{border-color:var(--accent);box-shadow:inset 0 0 0 1px rgba(255,102,0,.35)}
+  .card-top{display:flex;align-items:center;gap:8px}
+  .avatar{width:22px;height:22px;border-radius:5px;display:grid;place-items:center;font-weight:700;font-size:11px;color:#141418;flex:none}
+  .who{flex:1;min-width:0}
+  .nm{font-size:12px;font-weight:600}
+  .rl{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .badge{font-size:10px;padding:2px 6px;border-radius:999px;border:1px solid var(--border-strong);color:var(--muted);white-space:nowrap}
+  .badge.work{color:#ffb27a;border-color:rgba(255,102,0,.6);background:rgba(255,102,0,.12)}
+  .badge.rest{color:#8ed7ff;border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.10)}
+  .badge.walk{color:#9ef0b8;border-color:rgba(74,222,128,.5);background:rgba(74,222,128,.10)}
+  .task{margin-top:6px}
+  .tname{font-size:11px;color:var(--muted);display:block;margin-bottom:3px;min-height:13px}
+  .bar{height:5px;background:#15151b;border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6600,#ffb27a);transition:width .12s linear}
+  .acts{display:flex;gap:4px;margin-top:6px}
+  .acts button{flex:1;padding:4px}
+  .row{display:flex;gap:6px;margin-bottom:6px}
+  .row:last-child{margin-bottom:0}
+  .row button{flex:1}
+  input{flex:1;background:#181820;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;font-family:inherit}
+  input:focus{outline:none;border-color:var(--border-strong);box-shadow:0 0 0 2px rgba(255,102,0,.25)}
+  .hint{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.6}
+  .hint b{color:#bbb}
+  /* --- mode LIVE (nyambung ke OpenCode beneran) --- */
+  .mode-seg{display:flex;border:1px solid var(--border-strong);border-radius:6px;overflow:hidden}
+  .mode-seg button{border:none;border-right:1px solid var(--border-strong);border-radius:0}
+  .mode-seg button:last-child{border-right:none}
+  body.live .demo-only{display:none!important}
+  body:not(.live) .live-only{display:none!important}
+  .chip.live-on{color:#9ef0b8;border-color:rgba(74,222,128,.5);background:rgba(74,222,128,.10)}
+  .chip.live-off{color:#f59e0b;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.10)}
+  .chip.live-err{color:#ef4444;border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.10)}
+  .live-list{display:flex;flex-direction:column;gap:5px;max-height:40vh;overflow:auto;padding-right:2px}
+  .live-row{background:var(--bg-elev);border:1px solid var(--border);border-left:3px solid #444;border-radius:6px;padding:6px 8px}
+  .live-row.work{border-left-color:var(--accent);background:rgba(255,102,0,.07)}
+  .live-row.rest{border-left-color:#38bdf8}
+  .live-row.away{border-left-color:#444;opacity:.55}
+  .lr-top{display:flex;align-items:center;gap:6px}
+  .lr-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lr-state{font-size:9px;text-transform:uppercase;letter-spacing:.06em;padding:1px 5px;border-radius:999px;border:1px solid var(--border-strong);color:var(--muted);margin-left:auto;white-space:nowrap;flex:none}
+  .live-row.work .lr-state{color:#ffb27a;border-color:rgba(255,102,0,.6);background:rgba(255,102,0,.12)}
+  .live-row.rest .lr-state{color:#8ed7ff;border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.10)}
+  .lr-task{font-size:10px;color:#b9b9c4;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:ui-monospace,Consolas,monospace}
+  .live-row.rest .lr-task{color:#777}
+  .lr-sub{font-size:9px;color:#666;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card.locked .acts{opacity:.3;pointer-events:none}
+  .live-note{font-size:10px;color:#ffb27a;margin-top:6px;line-height:1.55}
+  @media (max-width:900px){
+    main{flex-direction:column}
+    aside.side{width:auto;border-left:none;border-top:1px solid var(--border);max-height:45vh}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">▣</span>
+      <div><h1>KEYLOX OFFICE</h1><div class="sub">AI agent sim — prototype pixel kantor</div></div>
+    </div>
+    <div class="hud">
+      <div class="chip" id="hud-clock">09:00</div>
+      <div class="chip" id="hud-work">0 kerja</div>
+      <div class="chip" id="hud-rest">0 istirahat</div>
+      <div class="chip" id="hud-done">0 selesai</div>
+      <div class="chip" id="hud-queue">0 task</div>
+      <div class="chip" id="hud-live">demo</div>
+    </div>
+    <div class="ctrls">
+      <div class="mode-seg">
+        <button id="mode-live" title="Karakter ikut aktivitas OpenCode beneran">● LIVE</button>
+        <button id="mode-demo" class="active" title="Simulasi demo (jalan sendiri)">DEMO</button>
+      </div>
+      <button id="btn-pause">⏸ Pause</button>
+      <button data-speed="1" class="active">1x</button>
+      <button data-speed="2">2x</button>
+      <button data-speed="4">4x</button>
+      <button id="btn-auto" class="active">AUTO: ON</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage">
+      <canvas id="scene"></canvas>
+      <div class="legend">
+        <b>Klik karakter</b> buat pilih · <b>klik lantai</b> buat nyuruh dia jalan ke situ ·
+        <b>Space</b> pause · <b>1-6</b> pilih agent · <b>W</b> semua kerja · <b>R</b> semua istirahat
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="side-block">
+        <h2>Agent (klik buat pilih)</h2>
+        <div class="cards" id="cards"></div>
+        <div class="live-note live-only">
+          Mode <b>LIVE</b>: karakter digerakin aktivitas OpenCode beneran.
+          Kerja = sesinya lagi jalanin tool, istirahat = nganggur, pulang = nganggur kelamaan.
+        </div>
+      </div>
+
+      <div class="side-block live-only">
+        <h2>Aktivitas OpenCode (live)</h2>
+        <div class="live-list" id="live-list"></div>
+        <div class="hint">
+          Tiap baris = 1 sesi OpenCode. Karakter cuma jalan ke meja kalau sesinya <b>beneran kerja</b>.
+        </div>
+      </div>
+
+      <div class="side-block demo-only">
+        <h2>Aksi cepat</h2>
+        <div class="row">
+          <button id="all-work">Semua Kerja</button>
+          <button id="all-rest">Semua Istirahat</button>
+        </div>
+        <div class="row">
+          <button id="all-wander">Sebar Jalan</button>
+          <button id="add-tasks">+5 Task Random</button>
+        </div>
+      </div>
+
+      <div class="side-block demo-only">
+        <h2>Perintah</h2>
+        <div class="row">
+          <input id="cmd" placeholder="mis. reno kerja" />
+          <button id="cmd-run">Kirim</button>
+        </div>
+        <div class="hint" id="cmd-hint">
+          Contoh: <b>reno kerja</b> · <b>maya istirahat</b> · <b>beat jalan</b> · <b>semua kerja</b> · <b>semua istirahat</b>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==================================================================
+     1. Konstanta & util
+     ================================================================== */
+  const TILE = 16, MAP_W = 34, MAP_H = 22;
+  const W = MAP_W * TILE, H = MAP_H * TILE;
+  const rnd  = (a, b) => a + Math.random() * (b - a);
+  const rndi = (a, b) => Math.floor(rnd(a, b + 1));
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const dist2 = (x1, y1, x2, y2) => { const dx = x1 - x2, dy = y1 - y2; return dx * dx + dy * dy; };
+
+  /* ==================================================================
+     2. Canvas + scaling (pixel art, integer scale biar tetap tajam)
+     ================================================================== */
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d');
+  canvas.width = W; canvas.height = H;
+  let scale = 2;
+
+  function fit() {
+    const st = document.querySelector('.stage');
+    const availW = Math.max(200, st.clientWidth - 28);
+    const availH = Math.max(200, st.clientHeight - 70);
+    const s = Math.min(availW / W, availH / H);
+    scale = clamp(Math.floor(s) || 1, 1, 3);
+    canvas.style.width = (W * scale) + 'px';
+    canvas.style.height = (H * scale) + 'px';
+  }
+  window.addEventListener('resize', fit);
+
+  function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); }
+  function shadowEllipse(cx, cy, rx, ry, a) {
+    ctx.fillStyle = 'rgba(0,0,0,' + a + ')';
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  /* ==================================================================
+     3. Grid, furniture, kursi
+     ================================================================== */
+  const blocked = new Uint8Array(MAP_W * MAP_H);
+  const idx = (x, y) => y * MAP_W + x;
+  const inB = (x, y) => x >= 0 && x < MAP_W && y >= 0 && y < MAP_H;
+  function blockRect(x, y, w, h) {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const nx = x + i, ny = y + j;
+      if (inB(nx, ny)) blocked[idx(nx, ny)] = 1;
+    }
+  }
+
+  const furniture = [];
+  const seats = [];
+  let seatSeq = 0;
+
+  function addF(kind, x, y, w, h, opts) {
+    const f = Object.assign({ kind, x, y, w, h, sortY: (y + h) * TILE, blocked: true, seats: [] }, opts || {});
+    if (f.blocked) blockRect(x, y, w, h);
+    furniture.push(f);
+    return f;
+  }
+  function makeDesk(dx, dy) {
+    const d = addF('desk', dx, dy, 2, 1);
+    for (let i = 0; i < 2; i++) {
+      const s = { id: ++seatSeq, x: dx + i, y: dy + 1, kind: 'work', by: null, desk: d };
+      seats.push(s); d.seats.push(s);
+    }
+    return d;
+  }
+
+  /* --- layout kantor ------------------------------------------------- */
+  // area kerja: 3 meja (2x1) + 2 kursi per meja = 6 seat
+  makeDesk(8, 6); makeDesk(14, 6); makeDesk(20, 6);
+
+  // dinding kiri: papan tulis, tanaman, lemari, dispenser
+  addF('whiteboard', 2, 3, 4, 1);
+  addF('plant', 2, 6, 1, 1);
+  addF('cabinet', 2, 9, 1, 2);
+  addF('cooler', 2, 12, 1, 1);
+  addF('plant', 2, 17, 1, 1);
+
+  // dinding kanan: rak, printer
+  addF('bookshelf', 26, 3, 3, 1);
+  addF('plant', 24, 6, 1, 1);
+  addF('printer', 24, 9, 1, 1);
+  addF('plant', 31, 8, 1, 1);
+  addF('vending', 31, 20, 1, 1);
+
+  // lounge (kanan bawah) — semua furniture di sini walkable biar bisa didatangi
+  const sofa = addF('sofa', 25, 16, 3, 1, { blocked: false, sortY: 17 * TILE - 8 });
+  for (let i = 0; i < 3; i++) {
+    const s = { id: ++seatSeq, x: 25 + i, y: 16, kind: 'rest', restKind: 'couch', by: null };
+    seats.push(s); sofa.seats.push(s);
+  }
+  [[29, 17], [29, 19]].forEach(function (p) {
+    const bb = addF('beanbag', p[0], p[1], 1, 1, { blocked: false, sortY: (p[1] + 1) * TILE - 8 });
+    const s = { id: ++seatSeq, x: p[0], y: p[1], kind: 'rest', restKind: 'bean', by: null };
+    seats.push(s); bb.seats.push(s);
+  });
+  addF('lamp', 31, 19, 1, 1);
+
+  // meja meeting (dekor)
+  addF('table', 12, 16, 4, 1);
+  [[11, 16], [16, 16], [13, 17], [14, 17]].forEach(function (p) {
+    addF('chair', p[0], p[1], 1, 1, { blocked: false, sortY: (p[1] + 1) * TILE - 8 });
+  });
+
+  const workSeats = seats.filter((s) => s.kind === 'work');
+  const restSeats = seats.filter((s) => s.kind === 'rest');
+
+  /* ==================================================================
+     4. Agent
+     ================================================================== */
+  const AGENT_DEFS = [
+    { name: 'Reno',  role: 'Render & Export',   c: { skin: '#f2c9a0', hair: '#3a2a20', shirt: '#ff6600', pants: '#2b2f45' } },
+    { name: 'Maya',  role: 'Auto-Cut / Trim',   c: { skin: '#f7d7b5', hair: '#7a3fb0', shirt: '#4ade80', pants: '#33384f' } },
+    { name: 'Hue',   role: 'Color Grade',       c: { skin: '#e8b98a', hair: '#f2b23c', shirt: '#38bdf8', pants: '#2b2f45' } },
+    { name: 'Beat',  role: 'Audio & Music',     c: { skin: '#d9a273', hair: '#1f2430', shirt: '#f472b6', pants: '#3a3f57' } },
+    { name: 'Texty', role: 'Caption & Subtitle', c: { skin: '#f2c9a0', hair: '#c0392b', shirt: '#a78bfa', pants: '#2b2f45' } },
+    { name: 'Pixel', role: 'Effects & Shader',  c: { skin: '#f7d7b5', hair: '#25c2a0', shirt: '#facc15', pants: '#33384f' } }
+  ];
+  const SPAWN = [[3, 14], [4, 14], [5, 14], [3, 15], [4, 15], [5, 15]];
+  const agents = [];
+  const agentById = {};
+
+  AGENT_DEFS.forEach(function (d, i) {
+    const s = SPAWN[i % SPAWN.length];
+    const a = {
+      id: 'a' + (i + 1), name: d.name, role: d.role, c: d.c,
+      baseName: d.name, baseRole: d.role,
+      sid: null, liveSess: null, liveTask: null, workTime: 0, hidden: false, askT: -99,
+      px: s[0] * TILE + TILE / 2, py: s[1] * TILE + TILE - 2,
+      dir: 'down', state: 'idle', goal: null,
+      path: [], walked: 0, anim: Math.random() * 3,
+      seat: null, restSpot: null, restKind: null,
+      task: null, pendingTask: null, taskDur: 10, progress: 0,
+      idleTimer: rnd(0.4, 3), restTimer: 0, preferRest: false, tasksDone: 0,
+      bubble: null, hover: false, selected: false
+    };
+    agents.push(a); agentById[a.id] = a;
+  });
+
+  /* ==================================================================
+     5. Task queue
+     ================================================================== */
+  const TASK_POOL = [
+    'Render 4K', 'Auto-Cut Clip', 'Color Grade', 'Sync Audio', 'Burn Subtitle',
+    'Export MP4', 'Noise Clean', 'Speed Ramp', 'Face Track', 'Chroma Key',
+    'Apply LUT', 'Beat Sync', 'Add Caption', 'Stabilize', 'Smart Crop',
+    'Transition FX', 'Audio Duck', 'B-Roll Insert', 'Trim Silence', 'Vertical Reframe'
+  ];
+  let taskQueue = [];
+  let totalDone = 0;
+  function refillQueue() { while (taskQueue.length < 4) taskQueue.push(pick(TASK_POOL)); }
+  function takeTask() { refillQueue(); return taskQueue.shift(); }
+
+  /* ==================================================================
+     6. Partikel & bubble
+     ================================================================== */
+  const particles = [];
+  function spawnParticle(p) {
+    particles.push(Object.assign({ vx: 0, vy: -14, life: 1, kind: 'text', text: '', color: '#fff', size: 8, grav: true }, p));
+  }
+  function bubble(a, text, ttl) { a.bubble = { text: String(text), ttl: ttl || 2.8 }; }
+  function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.grav) p.vy += 6 * dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  /* ==================================================================
+     7. Pathfinding (A* 4 arah, grid kecil jadi aman pakai linear scan)
+     ================================================================== */
+  function tilePenalty(x, y, selfId) {
+    let p = 0;
+    for (let i = 0; i < seats.length; i++) {
+      const s = seats[i];
+      if (s.by && s.by !== selfId && s.x === x && s.y === y) p += 8;
+    }
+    for (let i = 0; i < agents.length; i++) {
+      const a = agents[i];
+      if (a.id !== selfId && a.state !== 'walk' && Math.floor(a.px / TILE) === x && Math.floor(a.py / TILE) === y) p += 4;
+    }
+    return p;
+  }
+  function reconstruct(from, cur) {
+    const out = [];
+    while (cur !== -1 && from[cur] !== -1) {
+      const x = cur % MAP_W;
+      out.push({ x: x, y: (cur - x) / MAP_W });
+      cur = from[cur];
+    }
+    return out.reverse();
+  }
+  function findPath(sx, sy, tx, ty, selfId) {
+    if (!inB(tx, ty) || blocked[idx(tx, ty)]) return null;
+    const N = MAP_W * MAP_H, start = idx(sx, sy), goal = idx(tx, ty);
+    if (start === goal) return [];
+    const g = new Float32Array(N).fill(Infinity);
+    const f = new Float32Array(N).fill(Infinity);
+    const from = new Int32Array(N).fill(-1);
+    const closed = new Uint8Array(N);
+    const open = [start];
+    g[start] = 0; f[start] = Math.abs(tx - sx) + Math.abs(ty - sy);
+    const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    let guard = 0;
+    while (open.length && guard++ < 9000) {
+      let bi = 0;
+      for (let i = 1; i < open.length; i++) if (f[open[i]] < f[open[bi]]) bi = i;
+      const cur = open.splice(bi, 1)[0];
+      if (cur === goal) return reconstruct(from, cur);
+      if (closed[cur]) continue;
+      closed[cur] = 1;
+      const cx = cur % MAP_W, cy = (cur - cx) / MAP_W;
+      for (let d = 0; d < 4; d++) {
+        const nx = cx + DIRS[d][0], ny = cy + DIRS[d][1];
+        if (!inB(nx, ny)) continue;
+        const ni = idx(nx, ny);
+        if (blocked[ni] || closed[ni]) continue;
+        const ng = g[cur] + 1 + tilePenalty(nx, ny, selfId);
+        if (ng < g[ni]) {
+          g[ni] = ng;
+          f[ni] = ng + Math.abs(tx - nx) + Math.abs(ty - ny);
+          from[ni] = cur;
+          open.push(ni);
+        }
+      }
+    }
+    return null;
+  }
+
+  /* ==================================================================
+     8. Aksi agent (assign kerja / istirahat / jalan)
+     ================================================================== */
+  function tileOf(a) { return { x: Math.floor(a.px / TILE), y: Math.floor((a.py + 1) / TILE) }; }
+  function nearestFree(list, x, y) {
+    let best = null, bd = Infinity;
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i];
+      if (s.by) continue;
+      const d = dist2(s.x, s.y, x, y);
+      if (d < bd) { bd = d; best = s; }
+    }
+    return best;
+  }
+  function release(a) {
+    releaseSeat(a); releaseRest(a);
+  }
+  function releaseSeat(a) {
+    if (a.seat) { a.seat.by = null; a.seat = null; }
+  }
+  function releaseRest(a) {
+    if (a.restSpot) { a.restSpot.by = null; a.restSpot = null; }
+  }
+  function goTo(a, target, goal, label) {
+    const t = tileOf(a);
+    const path = findPath(t.x, t.y, target.x, target.y, a.id);
+    if (!path) { bubble(a, 'Gak bisa lewat situ'); return false; }
+    a.path = path; a.state = 'walk'; a.goal = goal;
+    if (label) bubble(a, label);
+    return true;
+  }
+  function sendToDesk(a, task) {
+    const t = tileOf(a);
+    // udah nongkrong di meja → cukup ganti/urus task-nya
+    if (a.state === 'work' && a.seat) {
+      if (task) { a.task = task; a.progress = 0; a.taskDur = rnd(7, 15); bubble(a, 'Task baru: ' + task, 2.6); }
+      else bubble(a, 'Udah kerja woy');
+      return;
+    }
+    // kursi yang udah dipegang dipakai lagi (jangan dilepas & direbut ulang)
+    let s = a.seat;
+    if (s) { releaseRest(a); }
+    else {
+      release(a);
+      s = nearestFree(workSeats, t.x, t.y);
+      if (!s) { bubble(a, 'Meja penuh :('); return; }
+      s.by = a.id; a.seat = s;
+    }
+    const newTask = task || a.pendingTask || takeTask();
+    a.pendingTask = newTask;
+    // rollback booking kalau ternyata path-nya gak ketemu
+    if (!goTo(a, s, 'desk', 'Kerja: ' + newTask)) { releaseSeat(a); a.pendingTask = null; }
+  }
+  function sendToRest(a) {
+    const t = tileOf(a);
+    if (a.state === 'rest' && a.restSpot) { bubble(a, 'Lagi istirahat~'); return; }
+    let s = a.restSpot;
+    if (s) { releaseSeat(a); }
+    else {
+      release(a);
+      s = nearestFree(restSeats, t.x, t.y);
+      if (!s) { bubble(a, 'Sofa penuh :('); return; }
+      s.by = a.id; a.restSpot = s;
+    }
+    a.pendingTask = null;
+    if (!goTo(a, s, 'rest', 'Istirahat dulu~')) { releaseRest(a); }
+  }
+  function sendWander(a) {
+    if (a.state === 'walk') return;
+    let t = null;
+    for (let i = 0; i < 40; i++) {
+      const x = rndi(2, MAP_W - 3), y = rndi(2, MAP_H - 3);
+      if (!blocked[idx(x, y)]) { t = { x: x, y: y }; break; }
+    }
+    if (!t) return;
+    release(a);
+    goTo(a, t, 'point', 'Jalan-jalan');
+  }
+  function sendToPoint(a, x, y) {
+    if (!inB(x, y) || blocked[idx(x, y)]) { bubble(a, 'Nabrak dinding? no.'); return; }
+    release(a); a.pendingTask = null;
+    goTo(a, { x: x, y: y }, 'point', null);
+  }
+  function sendAway(a) {
+    if (a.hidden) return;
+    release(a); a.pendingTask = null;
+    if (!goTo(a, { x: 16, y: MAP_H - 2 }, 'away', 'Gak ada kerjaan, pulang dulu~')) a.hidden = true;
+  }
+
+  function onArrive(a) {
+    if (a.goal === 'desk') {
+      a.state = 'work'; a.progress = 0; a.dir = 'up';
+      a.task = a.pendingTask || takeTask();
+      a.pendingTask = null;
+      a.taskDur = rnd(7, 15);
+      bubble(a, 'Gas: ' + a.task, 3.2);
+      spawnParticle({ x: a.px, y: a.py - 24, text: '!', color: '#ffb27a', vy: -18, life: 1.2 });
+    } else if (a.goal === 'rest') {
+      a.state = 'rest'; a.restTimer = rnd(9, 20); a.dir = 'down';
+      a.restKind = a.restSpot ? a.restSpot.restKind : 'bean';
+      bubble(a, 'Zzz...', 2.2);
+    } else if (a.goal === 'away') {
+      a.state = 'away'; a.hidden = true;
+    } else {
+      a.state = 'idle'; a.idleTimer = rnd(1.6, 4);
+    }
+    a.goal = null;
+  }
+
+  /* ==================================================================
+     9. Update agent
+     ================================================================== */
+  const WALK_SPEED = 27;
+
+  function updateAgent(a, dt) {
+    a.anim += dt;
+    if (a.bubble) { a.bubble.ttl -= dt; if (a.bubble.ttl <= 0) a.bubble = null; }
+    if (a.hidden) return;   // lagi "pulang" (sesi nganggur kelamaan)
+
+    if (a.state === 'walk') {
+      if (!a.path.length) { onArrive(a); return; }
+      const t = a.path[0];
+      const tx = t.x * TILE + TILE / 2, ty = t.y * TILE + TILE - 2;
+      const dx = tx - a.px, dy = ty - a.py;
+      const d = Math.hypot(dx, dy);
+      const step = WALK_SPEED * dt;
+      if (d <= step) {
+        a.px = tx; a.py = ty; a.path.shift(); a.walked += 1;
+        if (!a.path.length) { onArrive(a); return; }
+      } else {
+        a.px += (dx / d) * step; a.py += (dy / d) * step; a.walked += step / 6;
+        if (Math.abs(dx) > Math.abs(dy)) a.dir = dx < 0 ? 'left' : 'right';
+        else a.dir = dy < 0 ? 'up' : 'down';
+      }
+      return;
+    }
+
+    if (a.state === 'work') {
+      if (live.mode === 'live') {
+        // progress-nya cuma kosmetik: yang nentuin kerja/nggak itu sesi OpenCode
+        a.workTime += dt;
+        a.progress = 0.06 + 0.86 * ((a.workTime % 40) / 40);
+        if (Math.random() < dt * 6) {
+          spawnParticle({ x: a.px + rnd(-6, 6), y: a.py - 22 + rnd(-2, 2), kind: 'pixel', color: '#ffb27a', life: 0.45, vx: rnd(-10, 10), vy: rnd(-26, -12), size: 2 });
+        }
+        return;
+      }
+      a.progress = Math.min(1, a.progress + dt / a.taskDur);
+      if (Math.random() < dt * 6) {
+        spawnParticle({ x: a.px + rnd(-6, 6), y: a.py - 22 + rnd(-2, 2), kind: 'pixel', color: '#ffb27a', life: 0.45, vx: rnd(-10, 10), vy: rnd(-26, -12), size: 2 });
+      }
+      if (a.progress >= 1) {
+        totalDone++; a.tasksDone++;
+        spawnParticle({ x: a.px, y: a.py - 26, text: '+1', color: '#4ade80', vy: -16, life: 1.1 });
+        bubble(a, 'Beres: ' + (a.task || 'task'), 2.6);
+        a.task = null; a.progress = 0; a.preferRest = true;
+        release(a);
+        a.state = 'idle'; a.idleTimer = rnd(0.3, 1);
+      }
+      return;
+    }
+
+    if (a.state === 'rest') {
+      if (live.mode !== 'live') a.restTimer -= dt;
+      if (Math.random() < dt * 0.9) {
+        spawnParticle({ x: a.px + rnd(-4, 4), y: a.py - 20, text: 'z', color: '#8ed7ff', vy: -12, life: 1.7, grav: false, size: rndi(7, 11) });
+      }
+      if (live.mode !== 'live' && a.restTimer <= 0) {
+        release(a);
+        a.state = 'idle'; a.idleTimer = rnd(0.5, 2); a.preferRest = false;
+        bubble(a, 'Segar!', 1.8);
+      }
+      return;
+    }
+
+    // idle
+    a.idleTimer -= dt;
+    if (live.mode === 'live') return;   // di mode live, yang gerakin cuma polling OpenCode
+    if (a.idleTimer <= 0 && autoSim) {
+      a.idleTimer = rnd(3, 8);
+      if (Math.random() < 0.5) sendWander(a);
+    }
+  }
+
+  /* ==================================================================
+     10. Auto-sim: assign task & istirahat sendiri
+     ================================================================== */
+  let autoTimer = 2;
+  function autoTick(dt) {
+    if (!autoSim || live.mode === 'live') return;
+    autoTimer -= dt;
+    if (autoTimer > 0) return;
+    autoTimer = rnd(1.2, 3.2);
+    refillQueue();
+    for (let i = 0; i < agents.length; i++) {
+      const a = agents[i];
+      if (a.state !== 'idle' || a.path.length) continue;
+      const t = tileOf(a);
+      if (a.preferRest && nearestFree(restSeats, t.x, t.y)) { sendToRest(a); continue; }
+      if (taskQueue.length && nearestFree(workSeats, t.x, t.y) && Math.random() < 0.85) { sendToDesk(a); continue; }
+      if (Math.random() < 0.4 && nearestFree(restSeats, t.x, t.y)) sendToRest(a);
+      else if (Math.random() < 0.5) sendWander(a);
+    }
+  }
+
+  /* ==================================================================
+     11. Render: lantai, dinding, furniture, karakter
+     ================================================================== */
+  let tGlobal = 0;
+
+  function drawFloor() {
+    ctx.fillStyle = '#22222b'; ctx.fillRect(0, 0, W, H);
+    for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) {
+      if ((x + y) % 2 === 0) { ctx.fillStyle = '#25252f'; ctx.fillRect(x * TILE, y * TILE, TILE, TILE); }
+    }
+    // karpet zona kerja
+    ctx.fillStyle = '#272b35'; ctx.fillRect(6 * TILE, 4 * TILE, 18 * TILE, 5 * TILE);
+    ctx.strokeStyle = '#2f3542'; ctx.strokeRect(6 * TILE + 0.5, 4 * TILE + 0.5, 18 * TILE - 1, 5 * TILE - 1);
+    // karpet lounge
+    ctx.fillStyle = '#2e2340'; ctx.fillRect(24 * TILE, 13 * TILE, 8 * TILE, 7 * TILE);
+    ctx.fillStyle = '#332748'; ctx.fillRect(25 * TILE, 14 * TILE, 6 * TILE, 5 * TILE);
+    ctx.strokeStyle = '#3d2f55'; ctx.strokeRect(24 * TILE + 0.5, 13 * TILE + 0.5, 8 * TILE - 1, 7 * TILE - 1);
+    // grid halus
+    ctx.strokeStyle = 'rgba(255,255,255,.03)';
+    for (let x = 1; x < MAP_W; x++) { ctx.beginPath(); ctx.moveTo(x * TILE + 0.5, TILE); ctx.lineTo(x * TILE + 0.5, H - TILE); ctx.stroke(); }
+    for (let y = 1; y < MAP_H; y++) { ctx.beginPath(); ctx.moveTo(TILE, y * TILE + 0.5); ctx.lineTo(W - TILE, y * TILE + 0.5); ctx.stroke(); }
+  }
+
+  function drawWalls() {
+    ctx.fillStyle = '#34343f'; ctx.fillRect(0, 0, W, TILE);
+    ctx.fillStyle = '#3e3e4b'; ctx.fillRect(0, 0, W, 3);
+    ctx.fillStyle = '#1d1d24'; ctx.fillRect(0, TILE - 2, W, 2);
+
+    ctx.fillStyle = '#2b2b35'; ctx.fillRect(0, H - TILE, W, TILE);
+    ctx.fillStyle = '#1d1d24'; ctx.fillRect(0, H - TILE, W, 2);
+
+    ctx.fillStyle = '#31313c'; ctx.fillRect(0, TILE, TILE, H - 2 * TILE); ctx.fillRect(W - TILE, TILE, TILE, H - 2 * TILE);
+    ctx.fillStyle = '#1d1d24'; ctx.fillRect(TILE - 2, TILE, 2, H - 2 * TILE); ctx.fillRect(W - TILE, TILE, 2, H - 2 * TILE);
+
+    // jendela
+    [12, 25].forEach(function (wx) {
+      ctx.fillStyle = '#3a4a68'; ctx.fillRect(wx * TILE, 3, 2 * TILE, TILE - 6);
+      ctx.fillStyle = '#5f80b0'; ctx.fillRect(wx * TILE, 3, 2 * TILE, 2);
+      ctx.fillStyle = '#2c3a52'; ctx.fillRect(wx * TILE + TILE - 1, 3, 2, TILE - 6);
+    });
+    // pintu
+    ctx.fillStyle = '#3c3c48'; ctx.fillRect(16 * TILE, H - TILE, 2 * TILE, TILE);
+    ctx.fillStyle = '#565668'; ctx.fillRect(16 * TILE, H - TILE, 2 * TILE, 3);
+    ctx.fillStyle = '#ff6600'; ctx.fillRect(18 * TILE - 4, H - TILE + 7, 2, 2);
+    // plakat
+    ctx.font = 'bold 9px ui-monospace,Consolas,monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#8a8a99'; ctx.fillText('KEYLOX  •  AI OFFICE', W / 2, TILE / 2 + 1);
+  }
+
+  function drawDesk(f, x, y, w) {
+    ctx.fillStyle = 'rgba(0,0,0,.30)'; ctx.fillRect(x + 1, y + TILE - 3, w - 2, 3);
+    ctx.fillStyle = '#4a3a2c'; ctx.fillRect(x, y + 5, w, TILE - 9);
+    ctx.fillStyle = '#5c4835'; ctx.fillRect(x, y + 5, w, 3);
+    ctx.fillStyle = '#31261c'; ctx.fillRect(x, y + TILE - 4, w, 2);
+
+    f.seats.forEach(function (s, i) {
+      const mx = x + i * TILE + 3, my = y + 1;
+      const busy = s.by && agentById[s.by] && agentById[s.by].state === 'work';
+      if (busy) { ctx.fillStyle = 'rgba(255,150,60,.14)'; ctx.fillRect(mx - 5, my - 3, 20, 17); }
+      px(mx, my, 10, 8, '#191921');
+      const flick = busy && Math.sin(tGlobal * 9 + i) > 0;
+      px(mx + 1, my + 1, 8, 6, busy ? (flick ? '#8fd8ff' : '#5aa8d8') : '#0f0f16');
+      if (busy) {
+        px(mx + 2, my + 2, 6, 1, '#e8f7ff');
+        px(mx + 2, my + 4, 4, 1, '#bde8ff');
+        ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(mx + 2, my + 1, 1, 6);
+      }
+      px(mx + 4, my + 8, 2, 2, '#2a2a35');   // stand monitor
+      px(mx + 3, my + 9, 4, 2, '#3a3a46');   // keyboard
+    });
+  }
+  function drawChair(x, y) {
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(x + 3, y + TILE - 2, 10, 2);
+    px(x + 3, y + 3, 10, 8, '#3a3a45');
+    px(x + 3, y + 3, 10, 2, '#44445a');
+    px(x + 3, y + 10, 10, 4, '#2f2f3a');
+    px(x + 6, y + 13, 4, 3, '#22222b');
+  }
+  function drawSofa(x, y, w) {
+    ctx.fillStyle = 'rgba(0,0,0,.30)'; ctx.fillRect(x + 1, y + TILE - 4, w - 2, 4);
+    px(x, y + 1, w, TILE - 4, '#4b4b5e');
+    px(x, y + 6, w, TILE - 9, '#3d3d4d');
+    for (let i = 1; i < w / TILE; i++) px(x + i * TILE - 1, y + 6, 2, TILE - 9, '#33333f');
+    px(x, y + 1, 3, TILE - 4, '#5a5a70'); px(x + w - 3, y + 1, 3, TILE - 4, '#5a5a70');
+  }
+  function drawBeanbag(x, y) {
+    shadowEllipse(x + TILE / 2, y + TILE - 3, 7, 3, 0.28);
+    ctx.fillStyle = '#6b4a8a'; ctx.beginPath(); ctx.ellipse(x + TILE / 2, y + TILE / 2 + 1, 7, 6, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#7d59a0'; ctx.beginPath(); ctx.ellipse(x + TILE / 2 - 1, y + TILE / 2 - 1, 4, 3.5, 0, 0, 7); ctx.fill();
+  }
+  function drawPlant(x, y) {
+    shadowEllipse(x + 8, y + 14, 6, 2.5, 0.28);
+    px(x + 5, y + 10, 6, 5, '#7a4a2c');
+    px(x + 5, y + 10, 6, 1, '#8f5a36');
+    px(x + 6, y + 4, 4, 7, '#2f7d4f');
+    px(x + 3, y + 5, 3, 5, '#3f9d63');
+    px(x + 10, y + 6, 3, 4, '#3f9d63');
+    px(x + 7, y + 2, 2, 3, '#2f7d4f');
+  }
+  function drawWhiteboard(x, y, w) {
+    px(x, y + 2, w, 12, '#d8d8e0');
+    px(x + 1, y + 3, w - 2, 10, '#eef0f6');
+    px(x, y + 1, w, 1, '#a9adbb');
+    px(x + 2, y + 5, 14, 1, '#ff6600');
+    px(x + 2, y + 8, 22, 1, '#38bdf8');
+    px(x + 2, y + 11, 10, 1, '#4ade80');
+    px(x + w - 5, y + 12, 3, 2, '#c0c4d0');
+  }
+  function drawBookshelf(x, y, w) {
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(x + 1, y + TILE - 3, w - 2, 3);
+    px(x, y, w, TILE - 1, '#4a3a2c');
+    px(x + 1, y + 1, w - 2, TILE - 4, '#2a211a');
+    const cols = ['#ff6600', '#4ade80', '#38bdf8', '#f472b6', '#facc15', '#a78bfa', '#e5e7eb', '#f59e0b'];
+    for (let i = 0; i < (w - 2) / 2; i++) px(x + 2 + i * 2, y + 2 + (i % 2), 2, TILE - 7 - (i % 2), cols[i % cols.length]);
+  }
+  function drawCabinet(x, y, h) {
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(x + 1, y + h - 2, 14, 3);
+    px(x + 1, y + 1, 14, h - 2, '#565e6b');
+    px(x + 1, y + 1, 14, 2, '#6b7382');
+    px(x + 12, y + h / 2 - 2, 2, 3, '#2f343d');
+    px(x + 1, y + h / 2, 14, 1, '#41474f');
+  }
+  function drawCooler(x, y) {
+    shadowEllipse(x + 8, y + 15, 6, 2.5, 0.28);
+    px(x + 4, y + 7, 8, 8, '#dfe3ea');
+    px(x + 5, y + 1, 6, 6, '#4aa3df');
+    px(x + 6, y + 2, 2, 4, '#7ec8f2');
+    px(x + 4, y + 13, 8, 2, '#b9bfc9');
+  }
+  function drawPrinter(x, y) {
+    shadowEllipse(x + 8, y + 14, 6, 2.5, 0.28);
+    px(x + 2, y + 5, 12, 9, '#c9cfd8');
+    px(x + 3, y + 3, 10, 3, '#aab1bd');
+    px(x + 5, y + 1, 6, 2, '#f2f4f8');
+    px(x + 3, y + 11, 10, 2, '#8b93a0');
+    px(x + 12, y + 7, 2, 2, '#4ade80');
+  }
+  function drawVending(x, y) {
+    shadowEllipse(x + 8, y + 15, 6, 2.5, 0.28);
+    px(x + 2, y, 12, 16, '#3b4250');
+    px(x + 3, y + 2, 6, 12, '#233042');
+    const cols = ['#ff6600', '#4ade80', '#38bdf8', '#facc15'];
+    for (let i = 0; i < 4; i++) px(x + 4, y + 3 + i * 3, 4, 2, cols[i]);
+    px(x + 10, y + 3, 3, 8, '#dfe3ea');
+  }
+  function drawLamp(x, y) {
+    px(x + 7, y + 5, 2, 11, '#6b7382');
+    px(x + 4, y + 14, 8, 2, '#3b4250');
+    ctx.fillStyle = 'rgba(255,200,120,.16)';
+    ctx.beginPath(); ctx.moveTo(x + 8, y + 4); ctx.lineTo(x + 0, y + 12); ctx.lineTo(x + 16, y + 12); ctx.closePath(); ctx.fill();
+    px(x + 4, y + 1, 8, 4, '#f2c96b');
+  }
+  function drawTable(x, y, w) {
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(x + 1, y + TILE - 3, w - 2, 3);
+    px(x, y + 4, w, TILE - 7, '#5a4a3a');
+    px(x, y + 4, w, 2, '#6d5a45');
+    px(x + 2, y + 10, 3, 4, '#3f352a'); px(x + w - 5, y + 10, 3, 4, '#3f352a');
+  }
+
+  function drawFurniture(f) {
+    const x = f.x * TILE, y = f.y * TILE, w = f.w * TILE, h = f.h * TILE;
+    switch (f.kind) {
+      case 'desk': drawDesk(f, x, y, w); break;
+      case 'chair': drawChair(x, y); break;
+      case 'sofa': drawSofa(x, y, w); break;
+      case 'beanbag': drawBeanbag(x, y); break;
+      case 'plant': drawPlant(x, y); break;
+      case 'whiteboard': drawWhiteboard(x, y, w); break;
+      case 'bookshelf': drawBookshelf(x, y, w); break;
+      case 'cabinet': drawCabinet(x, y, h); break;
+      case 'cooler': drawCooler(x, y); break;
+      case 'printer': drawPrinter(x, y); break;
+      case 'vending': drawVending(x, y); break;
+      case 'lamp': drawLamp(x, y); break;
+      case 'table': drawTable(x, y, w); break;
+    }
+  }
+
+  /* --- karakter ------------------------------------------------------ */
+  function drawStanding(a) {
+    const x = Math.round(a.px) - 6, y = Math.round(a.py) - 16;
+    const f = a.state === 'walk' ? Math.floor(a.walked) % 2 : 0;
+    const bob = a.state === 'walk' ? (f ? 1 : 0) : (Math.sin(a.anim * 2.4) > 0 ? 0 : 1);
+    const t = y + bob;
+    const c = a.c;
+    shadowEllipse(Math.round(a.px), Math.round(a.py) - 1, 6, 2.5, 0.30);
+    px(x + 2, t + 15, 3, 1, '#1e2130'); px(x + 7, t + 15, 3, 1, '#1e2130');
+    px(x + 2, t + 12, 3, 3, c.pants); px(x + 7, t + 12, 3, 3, c.pants);
+    if (f) { px(x + 1, t + 13, 3, 2, c.pants); px(x + 8, t + 11, 3, 3, c.pants); }
+    px(x + 2, t + 7, 8, 5, c.shirt);
+    px(x + 2, t + 11, 8, 1, 'rgba(0,0,0,.18)');
+    px(x, t + 7, 2, 5, c.shirt); px(x + 10, t + 7, 2, 5, c.shirt);
+    px(x, t + 11, 2, 1, c.skin); px(x + 10, t + 11, 2, 1, c.skin);
+    px(x + 2, t + 1, 8, 6, c.skin);
+    if (a.dir === 'up') {
+      px(x + 1, t - 1, 10, 7, c.hair);
+    } else {
+      px(x + 1, t - 1, 10, 3, c.hair);
+      px(x + 1, t + 2, 1, 3, c.hair); px(x + 10, t + 2, 1, 3, c.hair);
+    }
+    if (a.dir === 'down') { px(x + 4, t + 3, 1, 2, '#1b1b22'); px(x + 7, t + 3, 1, 2, '#1b1b22'); }
+    else if (a.dir === 'left') { px(x + 3, t + 3, 1, 2, '#1b1b22'); px(x + 5, t + 3, 1, 2, '#1b1b22'); }
+    else if (a.dir === 'right') { px(x + 6, t + 3, 1, 2, '#1b1b22'); px(x + 8, t + 3, 1, 2, '#1b1b22'); }
+    if (a.dir !== 'up') px(x + 5, t + 5, 2, 1, 'rgba(0,0,0,.35)');
+  }
+
+  function drawSeated(a) {
+    const x = Math.round(a.px) - 6, y = Math.round(a.py) - 16;
+    const beat = Math.sin(a.anim * 6.5) > 0 ? 0 : 1;
+    const t = y + 2 + beat;
+    const c = a.c;
+    shadowEllipse(Math.round(a.px), Math.round(a.py) - 1, 6, 2.5, 0.30);
+    px(x + 2, t + 8, 8, 5, c.shirt);
+    px(x + 1, t + 8, 2, 4 + beat, c.shirt);
+    px(x + 10, t + 8, 2, 5 - beat, c.shirt);
+    px(x + 2, t + 2, 8, 6, c.skin);
+    px(x + 1, t, 10, 7, c.hair);
+    px(x, t + 2, 1, 3, '#2b2b36'); px(x + 11, t + 2, 1, 3, '#2b2b36');   // headset
+    px(x + 3, t + 6, 2, 1, '#3a3a48');
+  }
+
+  function drawLying(a) {
+    const cx = Math.round(a.px), cy = Math.round(a.py);
+    const breathe = Math.sin(a.anim * 1.6) > 0 ? 0 : 1;
+    const c = a.c;
+    const x = cx - 9, y = cy - 13 - breathe;
+    shadowEllipse(cx, cy - 2, 9, 3, 0.25);
+    px(x + 13, y + 7, 4, 4, c.pants);
+    px(x + 16, y + 8, 3, 3, '#1e2130');
+    px(x + 7, y + 7, 7, 5, c.shirt);
+    px(x + 2, y + 6, 6, 6, c.skin);
+    px(x + 1, y + 5, 7, 3, c.hair);
+    px(x + 4, y + 9, 1, 1, '#1b1b22'); px(x + 6, y + 9, 1, 1, '#1b1b22');
+  }
+
+  function drawLounging(a) {
+    const cx = Math.round(a.px), cy = Math.round(a.py);
+    const breathe = Math.sin(a.anim * 1.9) > 0 ? 0 : 1;
+    const c = a.c;
+    const x = cx - 6, y = cy - 14 - breathe;
+    shadowEllipse(cx, cy - 1, 7, 3, 0.25);
+    px(x + 1, y + 12, 10, 3, c.pants);
+    px(x + 2, y + 7, 8, 5, c.shirt);
+    px(x, y + 6, 2, 4, c.shirt); px(x + 10, y + 6, 2, 4, c.shirt);
+    px(x + 2, y + 1, 8, 6, c.skin);
+    px(x + 1, y, 10, 3, c.hair);
+    px(x + 4, y + 4, 1, 1, '#1b1b22'); px(x + 7, y + 4, 1, 1, '#1b1b22');
+  }
+
+  function drawAgent(a) {
+    if (a.selected) {
+      ctx.strokeStyle = '#ff6600'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(Math.round(a.px), Math.round(a.py) - 1, 8, 4, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (a.state === 'work') drawSeated(a);
+    else if (a.state === 'rest') { if (a.restKind === 'couch') drawLying(a); else drawLounging(a); }
+    else drawStanding(a);
+  }
+
+  function drawParticles() {
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      ctx.globalAlpha = clamp(p.life, 0, 1);
+      if (p.kind === 'pixel') px(p.x, p.y, 2, 2, p.color);
+      else {
+        ctx.fillStyle = p.color;
+        ctx.font = 'bold ' + (p.size || 8) + 'px ui-monospace,Consolas,monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(p.text, p.x, p.y);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawBubbles() {
+    ctx.font = 'bold 8px ui-monospace,Consolas,monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < agents.length; i++) {
+      const a = agents[i];
+      if (a.hidden) continue;
+      if (a.bubble) {
+        const txt = a.bubble.text.slice(0, 26);
+        const w = ctx.measureText(txt).width + 6, h = 12;
+        const bx = clamp(Math.round(a.px) - w / 2, 2, W - w - 2);
+        let by = Math.round(a.py) - 32;
+        if (by < 2) by = Math.round(a.py) + 6;
+        ctx.fillStyle = 'rgba(10,10,14,.92)'; ctx.fillRect(bx, by, w, h);
+        ctx.strokeStyle = '#ff6600'; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, h - 1);
+        ctx.fillStyle = '#f0f0f0'; ctx.fillText(txt, bx + 3, by + h / 2 + 1);
+        ctx.fillStyle = 'rgba(10,10,14,.92)';
+        ctx.beginPath();
+        ctx.moveTo(Math.round(a.px) - 2, by + h - 1);
+        ctx.lineTo(Math.round(a.px) + 2, by + h - 1);
+        ctx.lineTo(Math.round(a.px), by + h + 4);
+        ctx.closePath(); ctx.fill();
+      }
+      if (a.selected || a.hover) {
+        const name = a.name.toUpperCase();
+        const w = ctx.measureText(name).width + 6;
+        const bx = clamp(Math.round(a.px) - w / 2, 2, W - w - 2), by = Math.round(a.py) + 2;
+        ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(bx, by, w, 10);
+        ctx.fillStyle = '#ffb27a'; ctx.fillText(name, bx + 3, by + 6);
+      }
+    }
+  }
+
+  function drawAmbient() {
+    const hour = (clockMin / 60) % 24;
+    let tint = null;
+    if (hour >= 17 && hour < 19) tint = 'rgba(255,150,60,.07)';
+    else if (hour >= 19 && hour < 21) tint = 'rgba(90,60,160,.10)';
+    else if (hour >= 21 || hour < 6.5) tint = 'rgba(30,40,110,.22)';
+    if (tint) { ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H); }
+
+    const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.8);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,.35)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    if (paused) {
+      ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#f0f0f0';
+      ctx.font = 'bold 14px ui-monospace,Consolas,monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('PAUSED', W / 2, H / 2);
+    }
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    drawFloor();
+    drawWalls();
+
+    const items = [];
+    for (let i = 0; i < furniture.length; i++) {
+      const f = furniture[i];
+      items.push({ y: f.sortY, draw: (function (ff) { return function () { drawFurniture(ff); }; })(f) });
+    }
+    for (let i = 0; i < agents.length; i++) {
+      const a = agents[i];
+      if (a.hidden) continue;
+      const sy = a.py + (a.state === 'work' || a.state === 'rest' ? 5 : 0);
+      items.push({ y: sy, draw: (function (aa) { return function () { drawAgent(aa); }; })(a) });
+    }
+    items.sort(function (p, q) { return p.y - q.y; });
+    for (let i = 0; i < items.length; i++) items[i].draw();
+
+    drawParticles();
+    drawBubbles();
+    drawAmbient();
+  }
+
+  /* ==================================================================
+     12. Loop utama
+     ================================================================== */
+  let last = performance.now(), paused = false, speed = 1, autoSim = true;
+  let clockMin = 9 * 60, day = 1, uiTimer = 0;
+
+  /** Satu langkah simulasi. Dipakai loop render & juga KeyloxOffice.step(). */
+  function tick(dt) {
+    if (dt <= 0) return;
+    tGlobal += dt;
+    clockMin += dt * 2;
+    if (clockMin >= 1440) { clockMin -= 1440; day++; }
+    for (let i = 0; i < agents.length; i++) updateAgent(agents[i], dt);
+    autoTick(dt);
+    updateParticles(dt);
+  }
+
+  function loop(now) {
+    const raw = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    tick(paused ? 0 : raw * speed);
+
+    render();
+
+    uiTimer -= raw;
+    if (uiTimer <= 0) { uiTimer = 0.15; syncUI(); }
+    requestAnimationFrame(loop);
+  }
+
+  /* ==================================================================
+     13. UI: kartu agent, HUD, tombol, perintah
+     ================================================================== */
+  const cardsEl = document.getElementById('cards');
+  const hud = {
+    clock: document.getElementById('hud-clock'),
+    work: document.getElementById('hud-work'),
+    rest: document.getElementById('hud-rest'),
+    done: document.getElementById('hud-done'),
+    queue: document.getElementById('hud-queue'),
+    live: document.getElementById('hud-live')
+  };
+  let selected = null;
+
+  function buildCards() {
+    cardsEl.innerHTML = '';
+    agents.forEach(function (a) {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.dataset.id = a.id;
+      el.innerHTML =
+        '<div class="card-top">' +
+          '<span class="avatar" style="background:' + a.c.shirt + '">' + a.name[0] + '</span>' +
+          '<div class="who"><div class="nm">' + a.name + '</div><div class="rl">' + a.role + '</div></div>' +
+          '<span class="badge" data-badge>nganggur</span>' +
+        '</div>' +
+        '<div class="task"><span class="tname" data-task>—</span><div class="bar"><i data-bar></i></div></div>' +
+        '<div class="acts">' +
+          '<button data-act="work">Kerja</button>' +
+          '<button data-act="rest">Istirahat</button>' +
+          '<button data-act="wander">Jalan</button>' +
+        '</div>';
+      el.addEventListener('click', function (e) {
+        const btn = e.target.closest('button');
+        if (btn) {
+          const act = btn.dataset.act;
+          if (act === 'work') sendToDesk(a);
+          else if (act === 'rest') sendToRest(a);
+          else if (act === 'wander') sendWander(a);
+          return;
+        }
+        selectAgent(a);
+      });
+      cardsEl.appendChild(el);
+    });
+  }
+
+  function selectAgent(a) {
+    agents.forEach(function (x) { x.selected = (x === a); });
+    selected = a;
+    syncUI();
+  }
+
+  function syncUI() {
+    const isLive = live.mode === 'live';
+    let working = 0, resting = 0, away = 0;
+    for (let i = 0; i < agents.length; i++) {
+      const a = agents[i];
+      if (a.state === 'work') working++;
+      else if (a.state === 'rest') resting++;
+      else if (a.state === 'away') away++;
+
+      const card = cardsEl.querySelector('[data-id="' + a.id + '"]');
+      if (!card) continue;
+      const badge = card.querySelector('[data-badge]');
+      let label = 'nganggur', cls = '';
+      if (a.state === 'work') { label = 'kerja'; cls = 'work'; }
+      else if (a.state === 'rest') { label = 'istirahat'; cls = 'rest'; }
+      else if (a.state === 'away') { label = 'pulang'; }
+      else if (a.state === 'walk') {
+        label = a.goal === 'desk' ? 'ke meja' : a.goal === 'rest' ? 'ke sofa' : a.goal === 'away' ? 'pulang' : 'jalan';
+        cls = 'walk';
+      }
+      if (isLive && !a.liveSess && a.state !== 'walk') { label = 'nganggur'; cls = ''; }
+      badge.textContent = label;
+      badge.className = 'badge ' + cls;
+      card.classList.toggle('selected', !!a.selected);
+      card.classList.toggle('locked', isLive);
+      card.querySelector('.nm').textContent = a.name;
+      card.querySelector('.rl').textContent = a.role;
+      card.querySelector('.avatar').textContent = (a.name || '?').charAt(0);
+
+      let taskTxt;
+      if (isLive) {
+        if (a.state === 'work') taskTxt = '⚡ ' + (a.liveTask || 'kerja…');
+        else if (a.state === 'away') taskTxt = 'gak ada sesi aktif';
+        else if (a.liveSess && a.liveSess.lastTask) taskTxt = '✓ ' + a.liveSess.lastTask;
+        else taskTxt = 'nganggur';
+      } else {
+        taskTxt = a.task ? '🔧 ' + a.task : (a.pendingTask ? '⏳ ' + a.pendingTask : (a.tasksDone + ' task selesai'));
+      }
+      card.querySelector('[data-task]').textContent = taskTxt;
+      card.querySelector('[data-bar]').style.width = Math.round((a.hidden ? 0 : a.progress) * 100) + '%';
+    }
+    const hh = String(Math.floor(clockMin / 60) % 24).padStart(2, '0');
+    const mm = String(Math.floor(clockMin % 60)).padStart(2, '0');
+    hud.clock.innerHTML = '<b>' + hh + ':' + mm + '</b> · hari ' + day;
+    hud.work.innerHTML = '<b>' + working + '</b> kerja';
+    hud.rest.innerHTML = '<b>' + resting + '</b> istirahat';
+    if (isLive) {
+      const st = (live.data && live.data.stats) || {};
+      hud.done.innerHTML = '<b>' + (st.stepsCompleted || 0) + '</b> step';
+      hud.queue.innerHTML = '<b>' + away + '</b> pulang';
+    } else {
+      hud.done.innerHTML = '<b>' + totalDone + '</b> selesai';
+      hud.queue.innerHTML = '<b>' + taskQueue.length + '</b> task antre';
+    }
+    syncLiveChip();
+  }
+
+  /* --- tombol ------------------------------------------------------- */
+  function togglePause() {
+    paused = !paused;
+    const b = document.getElementById('btn-pause');
+    b.textContent = paused ? '▶ Lanjut' : '⏸ Pause';
+    b.classList.toggle('active', paused);
+  }
+  document.getElementById('btn-pause').addEventListener('click', togglePause);
+
+  document.querySelectorAll('[data-speed]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      speed = Number(b.dataset.speed);
+      document.querySelectorAll('[data-speed]').forEach(function (x) { x.classList.toggle('active', x === b); });
+    });
+  });
+
+  const autoBtn = document.getElementById('btn-auto');
+  autoBtn.addEventListener('click', function () {
+    autoSim = !autoSim;
+    autoBtn.textContent = 'AUTO: ' + (autoSim ? 'ON' : 'OFF');
+    autoBtn.classList.toggle('active', autoSim);
+  });
+
+  document.getElementById('all-work').addEventListener('click', function () { agents.forEach(function (a) { sendToDesk(a); }); });
+  document.getElementById('all-rest').addEventListener('click', function () { agents.forEach(function (a) { sendToRest(a); }); });
+  document.getElementById('all-wander').addEventListener('click', function () { agents.forEach(function (a) { sendWander(a); }); });
+  document.getElementById('add-tasks').addEventListener('click', function () {
+    for (let i = 0; i < 5; i++) taskQueue.push(pick(TASK_POOL));
+    refillQueue();
+    setHint('+5 task masuk antrean (' + taskQueue.length + ' nunggu).');
+  });
+
+  /* --- command bar -------------------------------------------------- */
+  const cmdInput = document.getElementById('cmd');
+  function setHint(html) { document.getElementById('cmd-hint').innerHTML = html; }
+  function runCommand() {
+    const raw = cmdInput.value.trim().toLowerCase();
+    if (!raw) return;
+    cmdInput.value = '';
+    const parts = raw.split(/\s+/);
+
+    if (parts[0] === 'semua') {
+      if (parts[1] === 'kerja') { agents.forEach(function (a) { sendToDesk(a); }); setHint('Semua agent: kerja.'); }
+      else if (parts[1] === 'istirahat' || parts[1] === 'rest') { agents.forEach(function (a) { sendToRest(a); }); setHint('Semua agent: istirahat.'); }
+      else if (parts[1] === 'jalan') { agents.forEach(function (a) { sendWander(a); }); setHint('Semua agent: jalan-jalan.'); }
+      else setHint('Pilih: <b>semua kerja</b> / <b>semua istirahat</b> / <b>semua jalan</b>');
+      return;
+    }
+
+    const a = agents.find(function (x) {
+      const n = x.name.toLowerCase();
+      return n === parts[0] || n.indexOf(parts[0]) === 0 || n[0] === parts[0];
+    });
+    if (!a) {
+      setHint('Agent gak ketemu. Ada: <b>' + agents.map(function (x) { return x.name.toLowerCase(); }).join(', ') + '</b>');
+      return;
+    }
+
+    const act = parts.slice(1).join(' ');
+    if (!act || act.indexOf('kerja') === 0) { sendToDesk(a); setHint(a.name + ' dikirim kerja.'); }
+    else if (act.indexOf('istirahat') === 0 || act.indexOf('rest') === 0) { sendToRest(a); setHint(a.name + ' istirahat.'); }
+    else if (act.indexOf('jalan') === 0) { sendWander(a); setHint(a.name + ' jalan-jalan.'); }
+    else if (act.indexOf('panggil') === 0 || act.indexOf('sini') === 0) { bubble(a, 'Iya, ada apa?', 2.5); selectAgent(a); setHint(a.name + ' dipanggil.'); }
+    else setHint('Aksi gak dikenal. Coba: <b>kerja</b> / <b>istirahat</b> / <b>jalan</b>');
+  }
+  document.getElementById('cmd-run').addEventListener('click', runCommand);
+  cmdInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') runCommand(); });
+
+  /* --- interaksi canvas -------------------------------------------- */
+  function toLocal(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+  }
+  function agentAt(x, y) {
+    let best = null, bd = Infinity;
+    for (let i = 0; i < agents.length; i++) {
+      const a = agents[i];
+      if (a.hidden) continue;
+      const dx = a.px - x, dy = a.py - 8 - y;
+      if (Math.abs(dx) < 9 && Math.abs(dy) < 11) {
+        const d = dx * dx + dy * dy;
+        if (d < bd) { bd = d; best = a; }
+      }
+    }
+    return best;
+  }
+  canvas.addEventListener('mousemove', function (e) {
+    const p = toLocal(e);
+    const a = agentAt(p.x, p.y);
+    canvas.style.cursor = a ? 'pointer' : 'crosshair';
+    for (let i = 0; i < agents.length; i++) agents[i].hover = (agents[i] === a);
+  });
+  canvas.addEventListener('click', function (e) {
+    const p = toLocal(e);
+    const a = agentAt(p.x, p.y);
+    if (a) { selectAgent(a); return; }
+    if (live.mode === 'live') { if (selected) bubble(selected, 'Mode live: gerakannya ikut OpenCode', 2.4); return; }
+    if (selected) sendToPoint(selected, Math.floor(p.x / TILE), Math.floor(p.y / TILE));
+  });
+
+  /* --- keyboard ---------------------------------------------------- */
+  window.addEventListener('keydown', function (e) {
+    if (e.target && e.target.tagName === 'INPUT') return;
+    if (e.code === 'Space') { e.preventDefault(); togglePause(); return; }
+    const n = Number(e.key);
+    if (n >= 1 && n <= agents.length) { selectAgent(agents[n - 1]); return; }
+    if (live.mode === 'live') return;
+    if (e.key === 'w' || e.key === 'W') agents.forEach(function (a) { sendToDesk(a); });
+    if (e.key === 'r' || e.key === 'R') agents.forEach(function (a) { sendToRest(a); });
+  });
+
+  /* ==================================================================
+     14. LIVE MODE — karakter ikut aktivitas OpenCode beneran
+     ================================================================== */
+  const BRIDGE_BASE = (location.protocol === 'http:' || location.protocol === 'https:')
+    ? location.origin
+    : 'http://127.0.0.1:4399';
+
+  const live = {
+    mode: 'demo',        // 'demo' | 'live'
+    connected: false,
+    lastOk: 0,
+    error: null,
+    data: null,
+    timer: null,
+    fails: 0
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function fmtAgo(ms) {
+    const s = Math.round((ms || 0) / 1000);
+    if (s < 60) return s + 'd';
+    const m = Math.round(s / 60);
+    if (m < 60) return m + 'm';
+    return Math.round(m / 60) + 'j';
+  }
+
+  function detachLive(a) {
+    a.sid = null; a.liveSess = null; a.liveTask = null;
+    a.name = a.baseName; a.role = a.baseRole;
+    a.path = []; a.pendingTask = null;
+    release(a);
+    a.hidden = false;
+    if (a.state !== 'walk') { a.state = 'idle'; a.idleTimer = rnd(0.3, 1); }
+  }
+
+  function revive(a) {
+    a.hidden = false;
+    a.px = 16 * TILE + TILE / 2;
+    a.py = (MAP_H - 2) * TILE + TILE - 2;
+    a.dir = 'up'; a.path = []; a.state = 'idle'; a.idleTimer = 0.1;
+  }
+
+  /** Gerakin 1 karakter sesuai state sesi OpenCode-nya. */
+  function driveLive(a, s) {
+    const st = s.state;
+    if (st === 'working') {
+      if (a.hidden) revive(a);
+      if (a.state === 'work') {
+        if (s.task && a.liveTask !== s.task) {
+          a.liveTask = s.task; a.task = s.task; a.workTime = 0;
+          bubble(a, s.task, 2.2);
+        }
+        return;
+      }
+      if (a.state === 'walk' && a.goal === 'desk') {
+        if (s.task && a.liveTask !== s.task) { a.liveTask = s.task; a.pendingTask = s.task; }
+        return;
+      }
+      if (tGlobal - a.askT < 2.5) return;   // jangan spam kalau meja penuh
+      a.askT = tGlobal;
+      a.liveTask = s.task || 'kerja…';
+      a.workTime = 0;
+      sendToDesk(a, a.liveTask);
+    } else if (st === 'resting') {
+      if (a.state === 'rest') return;
+      if (a.state === 'walk' && a.goal === 'rest') return;
+      if (tGlobal - a.askT < 4) return;
+      a.askT = tGlobal;
+      if (a.state === 'work' && a.liveTask) bubble(a, '✓ ' + a.liveTask, 2.2);
+      sendToRest(a);
+    } else if (st === 'away') {
+      if (a.hidden || a.state === 'away') return;
+      if (a.state === 'walk' && a.goal === 'away') return;
+      if (tGlobal - a.askT < 5) return;
+      a.askT = tGlobal;
+      sendAway(a);
+    }
+  }
+
+  function applyLive(data) {
+    const list = (data && data.sessions) || [];
+    live.data = data;
+    const want = list.slice(0, agents.length);
+    const ids = {};
+    want.forEach(function (s) { ids[s.id] = true; });
+
+    agents.forEach(function (a) { if (a.sid && !ids[a.sid]) detachLive(a); });
+
+    const used = {};
+    want.forEach(function (s) {
+      let a = agents.find(function (x) { return x.sid === s.id; });
+      if (!a) {
+        a = agents.find(function (x) { return !x.sid; });
+        if (!a) return;
+        a.sid = s.id;
+      }
+      let nm = s.name || 'Agent';
+      if (used[nm]) { let i = 2; while (used[nm + ' ' + i]) i++; nm = nm + ' ' + i; }
+      used[nm] = true;
+      a.name = nm;
+      a.role = s.title || s.project || 'OpenCode';
+      a.liveSess = s;
+      driveLive(a, s);
+    });
+
+    // karakter yang gak dapet sesi → istirahat aja
+    agents.forEach(function (a) {
+      if (a.sid) return;
+      a.liveSess = null; a.liveTask = null;
+      if (a.state === 'idle' && tGlobal - a.askT > 6) { a.askT = tGlobal; sendToRest(a); }
+    });
+
+    renderLiveList(list);
+  }
+
+  function renderLiveList(list) {
+    const el = document.getElementById('live-list');
+    if (!el) return;
+    let html = '';
+    list.forEach(function (s) {
+      const cls = s.state === 'working' ? 'work' : s.state === 'away' ? 'away' : 'rest';
+      const label = s.state === 'working' ? 'kerja' : s.state === 'away' ? 'pulang' : 'istirahat';
+      const task = s.state === 'working' ? (s.task || 'kerja…')
+        : (s.lastTask ? 'terakhir: ' + s.lastTask : 'nganggur');
+      const sub = (s.project || 'OpenCode') + ' · ' + (s.title || '') +
+        (s.state === 'working' ? '' : ' · diem ' + fmtAgo(s.quietMs));
+      html += '<div class="live-row ' + cls + '">' +
+        '<div class="lr-top"><span class="lr-name">' + esc(s.name) + '</span>' +
+        '<span class="lr-state">' + label + '</span></div>' +
+        '<div class="lr-task">' + esc(task) + '</div>' +
+        '<div class="lr-sub">' + esc(sub) + '</div></div>';
+    });
+    if (!list.length) html = '<div class="hint" style="margin:0">Belum ada sesi aktif.</div>';
+    el.innerHTML = html;
+  }
+
+  function syncLiveChip() {
+    const el = hud.live;
+    if (!el) return;
+    if (live.mode !== 'live') { el.className = 'chip'; el.textContent = 'demo'; return; }
+    if (live.error) { el.className = 'chip live-err'; el.textContent = '● live: putus'; return; }
+    const d = live.data || {};
+    const list = d.sessions || [];
+    const w = list.filter(function (s) { return s.state === 'working'; }).length;
+    el.className = 'chip live-on';
+    el.textContent = '● live · ' + list.length + ' sesi · ' + w + ' kerja';
+  }
+
+  function pollLive() {
+    fetch(BRIDGE_BASE + '/state', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (data) {
+        live.connected = true; live.error = null; live.lastOk = Date.now(); live.fails = 0;
+        live.data = data;
+        if (live.mode === 'live') applyLive(data);
+        syncLiveChip();
+      })
+      .catch(function (err) {
+        live.fails++; live.connected = false; live.error = String(err.message || err);
+        syncLiveChip();
+      });
+  }
+
+  function setMode(next) {
+    const isLive = next === 'live';
+    live.mode = isLive ? 'live' : 'demo';
+    document.body.classList.toggle('live', isLive);
+    document.getElementById('mode-live').classList.toggle('active', isLive);
+    document.getElementById('mode-demo').classList.toggle('active', !isLive);
+    document.getElementById('btn-auto').disabled = isLive;
+    if (isLive) {
+      if (!live.timer) live.timer = setInterval(pollLive, 1200);
+      pollLive();
+    } else {
+      if (live.timer) { clearInterval(live.timer); live.timer = null; }
+      agents.forEach(detachLive);
+      live.data = null;
+    }
+    syncUI();
+  }
+  document.getElementById('mode-live').addEventListener('click', function () { setMode('live'); });
+  document.getElementById('mode-demo').addEventListener('click', function () { setMode('demo'); });
+
+  function bootMode() {
+    fetch(BRIDGE_BASE + '/health', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('x'); return r.json(); })
+      .then(function () { setMode('live'); })
+      .catch(function () { setMode('demo'); });
+  }
+
+  /* ==================================================================
+     15. Start
+     ================================================================== */
+  buildCards();
+  refillQueue();
+  refillQueue();
+  fit();
+  syncUI();
+  bootMode();
+
+  // Hook debug — bisa dicolek dari DevTools console:
+  // KeyloxOffice.agents[0].state, KeyloxOffice.sendToDesk(KeyloxOffice.agents[0])
+  window.KeyloxOffice = {
+    agents: agents, seats: seats, workSeats: workSeats, restSeats: restSeats, furniture: furniture,
+    sendToDesk: sendToDesk, sendToRest: sendToRest, sendWander: sendWander, sendToPoint: sendToPoint,
+    select: selectAgent, findPath: findPath,
+    live: live, setMode: setMode, applyLive: applyLive, pollLive: pollLive,
+    /** Fast-forward simulasi tanpa nunggu render: KeyloxOffice.step(1/60, 600) = 10 detik */
+    step: function (dt, n) {
+      dt = dt || 1 / 60; n = n || 1;
+      for (let i = 0; i < n; i++) tick(dt);
+      render(); syncUI();
+      return this.state();
+    },
+    state: function () { return { clockMin: clockMin, day: day, paused: paused, speed: speed, autoSim: autoSim, tasksDone: totalDone, queue: taskQueue.length, mode: live.mode, live: live }; }
+  };
+
+  requestAnimationFrame(function (t) { last = t; loop(t); });
+})();
+</script>
+</body>
+</html>

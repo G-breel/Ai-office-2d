@@ -1,0 +1,18 @@
+{
+  "name": "ai-office-2d",
+  "version": "1.0.0",
+  "description": "Kantor pixel-art 2D yang hidup mengikuti aktivitas AI agent OpenCode beneran.",
+  "main": "keylox_office_bridge.mjs",
+  "scripts": {
+    "start": "node keylox_office_bridge.mjs --open",
+    "start:quiet": "node keylox_office_bridge.mjs --open --quiet",
+    "fake": "node keylox_office_bridge.mjs --fake --open"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": ["opencode", "pixel-art", "office", "ai-agent", "2d"],
+  "author": "G-breel",
+  "license": "MIT",
+  "type": "module"
+}
