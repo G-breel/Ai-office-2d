@@ -80,6 +80,99 @@ node keylox_office_bridge.mjs [opsi]
   --quiet           gak cetak log tiap poll
 ```
 
+## Kustomisasi (buat ganti jadi punya lu)
+
+Semua bisa diubah tanpa install dependency. Edit file, save, refresh browser.
+
+### 1. Ganti warna / tema
+
+Di `keylox_office.html`, atas file, blok `:root`:
+```css
+:root{
+  --bg-app:#1a1a1a; --bg-panel:#222; --bg-elev:#2a2a2a;
+  --accent:#ff6600;  /* warna aksen (tombol, outline karakter terpilih) */
+  ...
+}
+```
+Ganti `--accent` buat ubah warna highlight. Background kantor ada di `drawFloor()` (cari `#22222b`, `#25252f`).
+
+### 2. Ganti karakter (nama, role, warna baju)
+
+Di `keylox_office.html`, cari `AGENT_DEFS`:
+```js
+const AGENT_DEFS = [
+  { name: 'Reno',  role: 'Render & Export', c: { skin:'#f2c9a0', hair:'#3a2a20', shirt:'#ff6600', pants:'#2b2f45' } },
+  ...
+];
+```
+- `name` = nama default (mode DEMO)
+- `role` = jabatan yang tampil di kartu
+- `c` = warna pixel karakter (skin, rambut, baju, celana)
+- Tambah baris baru = karakter baru (jangan lupa tambah spawn point di `SPAWN`)
+
+### 3. Ganti layout kantor / furniture
+
+Di `keylox_office.html`, bagian `/* --- layout kantor --- */`:
+```js
+makeDesk(8, 6); makeDesk(14, 6); makeDesk(20, 6);   // 3 meja, 2 kursi per meja
+addF('sofa', 25, 16, 3, 1, { blocked:false, ... }); // sofa lounge
+```
+- `makeDesk(x, y)` = meja kerja + 2 kursi
+- `addF(kind, x, y, w, h)` = furniture (lihat daftar `kind` di `drawFurniture`)
+- `blockRect` otomatis nge-block tile yang gak bisa dilewati
+
+### 4. Ganti nama agent di mode LIVE
+
+Nama agent LIVE diambil dari field `agent` di DB OpenCode (`data.agent`), mis. `build`, `senior-developer`. Buat ubah jadi nama yang lebih friendly, edit fungsi `prettifyAgent()` di `keylox_office_bridge.mjs`:
+```js
+function prettifyAgent(a) {
+  // contoh: ganti 'build' jadi 'Budi'
+  if (a === 'build') return 'Budi';
+  ...
+}
+```
+Atau filter sesi tertentu pakai `--project keylox` (cumulative substring).
+
+### 5. Ganti label task (apa yang ditulis di gelembung)
+
+Di `keylox_office_bridge.mjs`, fungsi `describeTool()`:
+```js
+case 'bash': case 'shell': return 'bash: ' + short(cmd, 44);
+case 'edit': return 'edit: ' + baseName(input.filePath);
+```
+Tambah/ubah case buat tool baru.
+
+### 6. Ganti threshold (kapan istirahat / pulang)
+
+Lewat CLI (gak perlu edit kode):
+```bash
+node keylox_office_bridge.mjs --rest-after 10000 --away-after 600000
+```
+Atau edit konstanta di atas file bridge.
+
+### 7. Ganti port / DB path
+
+```bash
+node keylox_office_bridge.mjs --port 5000 --db C:/path/ke/opencode.db
+```
+Atau env var `OPENCODE_DB` / `KEYLOX_OFFICE_PORT`.
+
+### 8. Tambah karakter (lebih dari 6)
+
+1. Tambah spawn point di `SPAWN` array (HTML)
+2. Tambah entry di `AGENT_DEFS` (HTML)
+3. Bridge udah support sampai 8 sesi (`--max 8`), naikkan kalau mau lebih
+
+## Tips pakai dengan AI lain (Cursor, Claude Code, Aider, dll.)
+
+Bridge baca **DB OpenCode**. Kalau lu pakai AI lain:
+- **Cursor / Windsurf / Claude Code** → mereka punya DB/log sendiri; lu harus bikin bridge sendiri yang baca log mereka, atau kirim event ke endpoint `/state` manual.
+- **Cara paling gampang (universal)**: bikin script kecil yang POST ke `http://127.0.0.1:4399/state`? Gak bisa (bridge read-only). Tapi lu bisa bikin bridge sendiri yang serve `/state` dengan format yang sama:
+  ```json
+  { "sessions": [ { "id":"x", "name":"Agent", "state":"working", "task":"edit: foo.ts", "title":"...", "project":"..." } ] }
+  ```
+  Format lengkap ada di `buildState()` di `keylox_office_bridge.mjs`.
+
 ## Struktur file
 
 ```
